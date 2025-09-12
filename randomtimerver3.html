@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual Random Speed Timer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0c0c0c, #1a1a1a, #2d2d2d);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            align-items: flex-start;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .timer-container {
+            background: rgba(45, 45, 45, 0.3);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            width: 450px;
+        }
+
+        .timer-title {
+            font-size: 2rem;
+            margin-bottom: 25px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .input-section {
+            margin-bottom: 25px;
+        }
+
+        .time-input {
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px 15px;
+            font-size: 1.1rem;
+            color: #ffffff;
+            text-align: center;
+            width: 180px;
+            margin: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .time-input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+        }
+
+        .time-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .timer-circle-container {
+            position: relative;
+            margin: 30px auto;
+            width: 250px;
+            height: 250px;
+        }
+
+        .timer-circle {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            position: relative;
+            background: conic-gradient(#4ecdc4 0deg, #4ecdc4 0deg, rgba(255,255,255,0.1) 0deg);
+            transition: all 0.3s ease;
+        }
+
+        .timer-circle::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 234px;
+            height: 234px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .timer-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #ffffff;
+            z-index: 10;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.start {
+            background: linear-gradient(45deg, #56ab2f 0%, #a8e6cf 100%);
+        }
+
+        .btn.stop {
+            background: linear-gradient(45deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .btn.reset {
+            background: linear-gradient(45deg, #3742fa 0%, #2f3542 100%);
+        }
+
+        .status {
+            margin-top: 15px;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+            min-height: 24px;
+        }
+
+        .toggle-section {
+            margin-top: 15px;
+        }
+
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 8px 12px;
+            margin: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        .hidden-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            opacity: 0;
+        }
+
+        .hidden-section.show {
+            max-height: 200px;
+            opacity: 1;
+            margin-top: 15px;
+        }
+
+        .speed-indicator {
+            font-size: 1.1rem;
+            margin: 12px 0;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .speed-normal { color: #4ecdc4; }
+        .speed-fast { 
+            color: #ff6b6b; 
+            animation: pulse 1s infinite;
+        }
+        .speed-slow { color: #ffd93d; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .event-log {
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            max-height: 120px;
+            overflow-y: auto;
+            text-align: left;
+        }
+
+        @media (max-width: 1000px) {
+            .main-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Timer 1 -->
+        <div class="timer-container">
+            <h2 class="timer-title">⚡ Timer 1</h2>
+            
+            <div class="input-section">
+                <input type="text" class="time-input" id="timeInput1" placeholder="5 or 5:30" maxlength="10">
+                <div style="margin-top: 8px; font-size: 0.8rem; color: rgba(255,255,255,0.6);">
+                    Minutes or MM:SS format
+                </div>
+            </div>
+
+            <div class="timer-circle-container">
+                <div class="timer-circle" id="timerCircle1">
+                    <div class="timer-display" id="display1">00:00</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn start" onclick="startTimer(1)">Start</button>
+                <button class="btn stop" onclick="stopTimer(1)">Stop</button>
+                <button class="btn reset" onclick="resetTimer(1)">Reset</button>
+            </div>
+
+            <div class="status" id="status1">Enter a time and click Start</div>
+
+            <div class="toggle-section">
+                <button class="toggle-btn" onclick="toggleSection('speedSection1')">Show Speed Info</button>
+                <button class="toggle-btn" onclick="toggleSection('logSection1')">Show Event Log</button>
+            </div>
+
+            <div class="hidden-section" id="speedSection1">
+                <div class="speed-indicator" id="speedIndicator1">
+                    Speed: <span id="speedValue1">1.0x</span> | Duration: <span id="durationValue1">--</span>
+                </div>
+            </div>
+
+            <div class="hidden-section" id="logSection1">
+                <div class="event-log" id="eventLog1">Ready to start...</div>
+            </div>
+        </div>
+
+        <!-- Timer 2 -->
+        <div class="timer-container">
+            <h2 class="timer-title">⚡ Timer 2</h2>
+            
+            <div class="input-section">
+                <input type="text" class="time-input" id="timeInput2" placeholder="5 or 5:30" maxlength="10">
+                <div style="margin-top: 8px; font-size: 0.8rem; color: rgba(255,255,255,0.6);">
+                    Minutes or MM:SS format
+                </div>
+            </div>
+
+            <div class="timer-circle-container">
+                <div class="timer-circle" id="timerCircle2">
+                    <div class="timer-display" id="display2">00:00</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn start" onclick="startTimer(2)">Start</button>
+                <button class="btn stop" onclick="stopTimer(2)">Stop</button>
+                <button class="btn reset" onclick="resetTimer(2)">Reset</button>
+            </div>
+
+            <div class="status" id="status2">Enter a time and click Start</div>
+
+            <div class="toggle-section">
+                <button class="toggle-btn" onclick="toggleSection('speedSection2')">Show Speed Info</button>
+                <button class="toggle-btn" onclick="toggleSection('logSection2')">Show Event Log</button>
+            </div>
+
+            <div class="hidden-section" id="speedSection2">
+                <div class="speed-indicator" id="speedIndicator2">
+                    Speed: <span id="speedValue2">1.0x</span> | Duration: <span id="durationValue2">--</span>
+                </div>
+            </div>
+
+            <div class="hidden-section" id="logSection2">
+                <div class="event-log" id="eventLog2">Ready to start...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Timer state objects - now using Date-based timing
+        const timers = {
+            1: {
+                startTime: null,
+                endTime: null,
+                originalDuration: 0,
+                isRunning: false,
+                currentSpeed: 1.0,
+                speedStartTime: null,
+                speedEndTime: null,
+                speedMultiplier: 1.0,
+                timerInterval: null,
+                speedCheckInterval: null,
+                accumulatedTime: 0,
+                speedEvents: []
+            },
+            2: {
+                startTime: null,
+                endTime: null,
+                originalDuration: 0,
+                isRunning: false,
+                currentSpeed: 1.0,
+                speedStartTime: null,
+                speedEndTime: null,
+                speedMultiplier: 1.0,
+                timerInterval: null,
+                speedCheckInterval: null,
+                accumulatedTime: 0,
+                speedEvents: []
+            }
+        };
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function parseTimeInput(input) {
+            input = input.trim();
+            
+            // If input contains a colon, parse as MM:SS
+            if (input.includes(':')) {
+                const parts = input.split(':');
+                if (parts.length !== 2) return 0;
+                const mins = parseInt(parts[0]) || 0;
+                const secs = parseInt(parts[1]) || 0;
+                return mins * 60 + secs;
+            }
+            
+            // If input is just a number, treat it as minutes
+            const number = parseInt(input) || 0;
+            return number * 60; // Convert minutes to seconds
+        }
+
+        function calculateTimeRemaining(timerNum) {
+            const timer = timers[timerNum];
+            if (!timer.isRunning || !timer.startTime) return 0;
+            
+            const now = Date.now();
+            let totalElapsedRealTime = (now - timer.startTime) / 1000;
+            
+            let consumedTime = 0;
+            let lastEventEnd = timer.startTime;
+            
+            for (const event of timer.speedEvents) {
+                if (event.endTime && event.endTime <= now) {
+                    const eventDuration = (event.endTime - event.startTime) / 1000;
+                    consumedTime += eventDuration * event.speed;
+                    lastEventEnd = event.endTime;
+                }
+            }
+            
+            if (timer.speedStartTime && !timer.speedEndTime) {
+                const currentEventDuration = (now - timer.speedStartTime) / 1000;
+                consumedTime += currentEventDuration * timer.currentSpeed;
+                lastEventEnd = now;
+            } else if (timer.speedEndTime && timer.speedEndTime <= now) {
+                const normalTimeSinceSpeedEnd = (now - lastEventEnd) / 1000;
+                consumedTime += normalTimeSinceSpeedEnd * 1.0;
+            } else {
+                const normalTime = (now - lastEventEnd) / 1000;
+                consumedTime += normalTime * 1.0;
+            }
+            
+            return Math.max(0, timer.originalDuration - consumedTime);
+        }
+
+        function updateDisplay(timerNum) {
+            const timer = timers[timerNum];
+            const display = document.getElementById(`display${timerNum}`);
+            const speedIndicator = document.getElementById(`speedIndicator${timerNum}`);
+            const speedValue = document.getElementById(`speedValue${timerNum}`);
+            const durationValue = document.getElementById(`durationValue${timerNum}`);
+            
+            const timeRemaining = calculateTimeRemaining(timerNum);
+            display.textContent = formatTime(timeRemaining);
+            speedValue.textContent = `${timer.currentSpeed.toFixed(1)}x`;
+            
+            const now = Date.now();
+            if (timer.speedStartTime && timer.speedEndTime && now < timer.speedEndTime) {
+                const speedTimeLeft = (timer.speedEndTime - now) / 1000;
+                durationValue.textContent = `${speedTimeLeft.toFixed(1)}s left`;
+            } else {
+                durationValue.textContent = 'Normal';
+                if (timer.currentSpeed !== 1.0) {
+                    timer.currentSpeed = 1.0;
+                    timer.speedStartTime = null;
+                    timer.speedEndTime = null;
+                }
+            }
+
+            speedIndicator.className = 'speed-indicator';
+            if (timer.currentSpeed > 1.5) {
+                speedIndicator.classList.add('speed-fast');
+            } else if (timer.currentSpeed < 0.8) {
+                speedIndicator.classList.add('speed-slow');
+            } else {
+                speedIndicator.classList.add('speed-normal');
+            }
+
+            updateCircle(timerNum);
+        }
+
+        function updateCircle(timerNum) {
+            const timer = timers[timerNum];
+            const timerCircle = document.getElementById(`timerCircle${timerNum}`);
+            
+            if (timer.originalDuration > 0) {
+                const timeRemaining = calculateTimeRemaining(timerNum);
+                const percentage = ((timer.originalDuration - timeRemaining) / timer.originalDuration) * 100;
+                const degrees = (percentage / 100) * 360;
+                const color = '#4ecdc4';
+                
+                timerCircle.style.background = `conic-gradient(${color} ${degrees}deg, rgba(255,255,255,0.1) ${degrees}deg)`;
+            }
+        }
+
+        function tick(timerNum) {
+            const timer = timers[timerNum];
+            const status = document.getElementById(`status${timerNum}`);
+            const timerCircle = document.getElementById(`timerCircle${timerNum}`);
+            
+            const timeRemaining = calculateTimeRemaining(timerNum);
+            
+            if (timeRemaining <= 0) {
+                stopTimer(timerNum);
+                status.textContent = "Time's up!";
+                logEvent(timerNum, "Timer finished!");
+                timerCircle.style.background = `conic-gradient(#ff6b6b 360deg, rgba(255,255,255,0.1) 360deg)`;
+                return;
+            }
+
+            updateDisplay(timerNum);
+        }
+
+        function logEvent(timerNum, message) {
+            const eventLog = document.getElementById(`eventLog${timerNum}`);
+            const timestamp = new Date().toLocaleTimeString();
+            eventLog.innerHTML = `[${timestamp}] ${message}<br>` + eventLog.innerHTML;
+        }
+
+        function checkSpeedRandomization(timerNum) {
+            const timer = timers[timerNum];
+            if (!timer.isRunning) return;
+            
+            const now = Date.now();
+            
+            if (!timer.speedStartTime || (timer.speedEndTime && now >= timer.speedEndTime)) {
+                if (Math.random() < 0.20) {
+                    if (timer.speedStartTime && timer.speedEndTime) {
+                        timer.speedEvents.push({
+                            startTime: timer.speedStartTime,
+                            endTime: timer.speedEndTime,
+                            speed: timer.speedMultiplier
+                        });
+                    }
+                    
+                    timer.currentSpeed = Math.random() * 1.4 + 0.6;
+                    timer.speedMultiplier = timer.currentSpeed;
+                    timer.speedStartTime = now;
+                    
+                    const durationPercent = Math.random() * 0.20 + 0.05;
+                    const durationMs = timer.originalDuration * durationPercent * 1000;
+                    timer.speedEndTime = now + durationMs;
+                    
+                    logEvent(timerNum, `Speed event! ${timer.currentSpeed.toFixed(1)}x for ${(durationMs/1000).toFixed(1)}s (${(durationPercent*100).toFixed(1)}% of total)`);
+                }
+            }
+        }
+
+        function startTimer(timerNum) {
+            const timer = timers[timerNum];
+            const timeInput = document.getElementById(`timeInput${timerNum}`);
+            const status = document.getElementById(`status${timerNum}`);
+            
+            if (timer.isRunning) return;
+
+            const inputTime = parseTimeInput(timeInput.value);
+            if (inputTime <= 0) {
+                status.textContent = "Please enter a valid time";
+                return;
+            }
+
+            const now = Date.now();
+            timer.startTime = now;
+            timer.originalDuration = inputTime;
+            timer.isRunning = true;
+            timer.currentSpeed = 1.0;
+            timer.speedMultiplier = 1.0;
+            timer.speedStartTime = null;
+            timer.speedEndTime = null;
+            timer.speedEvents = [];
+
+            status.textContent = "Timer running...";
+            logEvent(timerNum, `Timer started: ${formatTime(timer.originalDuration)}`);
+
+            timer.timerInterval = setInterval(() => tick(timerNum), 100);
+            timer.speedCheckInterval = setInterval(() => checkSpeedRandomization(timerNum), 5000);
+
+            updateDisplay(timerNum);
+        }
+
+        function stopTimer(timerNum) {
+            const timer = timers[timerNum];
+            const status = document.getElementById(`status${timerNum}`);
+            
+            timer.isRunning = false;
+            clearInterval(timer.timerInterval);
+            clearInterval(timer.speedCheckInterval);
+            status.textContent = "Timer stopped";
+            logEvent(timerNum, "Timer stopped");
+        }
+
+        function resetTimer(timerNum) {
+            const timer = timers[timerNum];
+            const timeInput = document.getElementById(`timeInput${timerNum}`);
+            const status = document.getElementById(`status${timerNum}`);
+            const timerCircle = document.getElementById(`timerCircle${timerNum}`);
+            
+            stopTimer(timerNum);
+            const inputTime = parseTimeInput(timeInput.value) || timer.originalDuration;
+            
+            timer.startTime = null;
+            timer.originalDuration = inputTime;
+            timer.currentSpeed = 1.0;
+            timer.speedMultiplier = 1.0;
+            timer.speedStartTime = null;
+            timer.speedEndTime = null;
+            timer.speedEvents = [];
+            
+            status.textContent = "Timer reset";
+            logEvent(timerNum, "Timer reset");
+            timerCircle.style.background = `conic-gradient(#4ecdc4 0deg, rgba(255,255,255,0.1) 0deg)`;
+            updateDisplay(timerNum);
+        }
+
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const button = event.target;
+            
+            if (section.classList.contains('show')) {
+                section.classList.remove('show');
+                button.textContent = button.textContent.replace('Hide', 'Show');
+            } else {
+                section.classList.add('show');
+                button.textContent = button.textContent.replace('Show', 'Hide');
+            }
+        }
+
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                Object.keys(timers).forEach(timerNum => {
+                    if (timers[timerNum].isRunning) {
+                        logEvent(timerNum, "App became visible - timer synchronized");
+                        updateDisplay(timerNum);
+                    }
+                });
+            }
+        });
+
+        document.getElementById('timeInput1').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') startTimer(1);
+        });
+
+        document.getElementById('timeInput2').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') startTimer(2);
+        });
+    </script>
+</body>
+</html>
