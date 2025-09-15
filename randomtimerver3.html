@@ -385,34 +385,51 @@
             return number * 60; // Convert minutes to seconds
         }
 
+        // FIXED: Completely rewritten time calculation logic
         function calculateTimeRemaining(timerNum) {
             const timer = timers[timerNum];
             if (!timer.isRunning || !timer.startTime) return 0;
             
             const now = Date.now();
-            let totalElapsedRealTime = (now - timer.startTime) / 1000;
-            
             let consumedTime = 0;
-            let lastEventEnd = timer.startTime;
+            let currentTime = timer.startTime;
             
+            // Process all completed speed events
             for (const event of timer.speedEvents) {
                 if (event.endTime && event.endTime <= now) {
+                    // Add normal time before this event
+                    if (currentTime < event.startTime) {
+                        const normalDuration = (event.startTime - currentTime) / 1000;
+                        consumedTime += normalDuration * 1.0;
+                    }
+                    // Add speed event time
                     const eventDuration = (event.endTime - event.startTime) / 1000;
                     consumedTime += eventDuration * event.speed;
-                    lastEventEnd = event.endTime;
+                    currentTime = event.endTime;
                 }
             }
             
-            if (timer.speedStartTime && !timer.speedEndTime) {
-                const currentEventDuration = (now - timer.speedStartTime) / 1000;
+            // Handle current active speed event
+            if (timer.speedStartTime && timer.speedStartTime <= now) {
+                // Add normal time before current speed event started
+                if (currentTime < timer.speedStartTime) {
+                    const normalDuration = (timer.speedStartTime - currentTime) / 1000;
+                    consumedTime += normalDuration * 1.0;
+                    currentTime = timer.speedStartTime;
+                }
+                
+                // Add current speed event time
+                const speedEventEnd = timer.speedEndTime || now;
+                const currentEventEnd = Math.min(speedEventEnd, now);
+                const currentEventDuration = (currentEventEnd - timer.speedStartTime) / 1000;
                 consumedTime += currentEventDuration * timer.currentSpeed;
-                lastEventEnd = now;
-            } else if (timer.speedEndTime && timer.speedEndTime <= now) {
-                const normalTimeSinceSpeedEnd = (now - lastEventEnd) / 1000;
-                consumedTime += normalTimeSinceSpeedEnd * 1.0;
-            } else {
-                const normalTime = (now - lastEventEnd) / 1000;
-                consumedTime += normalTime * 1.0;
+                currentTime = currentEventEnd;
+            }
+            
+            // Add any remaining normal time
+            if (currentTime < now) {
+                const remainingNormalTime = (now - currentTime) / 1000;
+                consumedTime += remainingNormalTime * 1.0;
             }
             
             return Math.max(0, timer.originalDuration - consumedTime);
@@ -427,19 +444,18 @@
             
             const timeRemaining = calculateTimeRemaining(timerNum);
             display.textContent = formatTime(timeRemaining);
-            speedValue.textContent = `${timer.currentSpeed.toFixed(1)}x`;
             
+            // Update speed display - check if we're in a speed event
             const now = Date.now();
-            if (timer.speedStartTime && timer.speedEndTime && now < timer.speedEndTime) {
+            if (timer.speedStartTime && timer.speedEndTime && now >= timer.speedStartTime && now < timer.speedEndTime) {
+                speedValue.textContent = `${timer.currentSpeed.toFixed(1)}x`;
                 const speedTimeLeft = (timer.speedEndTime - now) / 1000;
                 durationValue.textContent = `${speedTimeLeft.toFixed(1)}s left`;
             } else {
+                // Not in speed event or speed event has ended
+                timer.currentSpeed = 1.0;
+                speedValue.textContent = "1.0x";
                 durationValue.textContent = 'Normal';
-                if (timer.currentSpeed !== 1.0) {
-                    timer.currentSpeed = 1.0;
-                    timer.speedStartTime = null;
-                    timer.speedEndTime = null;
-                }
             }
 
             speedIndicator.className = 'speed-indicator';
@@ -492,31 +508,43 @@
             eventLog.innerHTML = `[${timestamp}] ${message}<br>` + eventLog.innerHTML;
         }
 
+        // FIXED: Improved speed event handling with proper state management
         function checkSpeedRandomization(timerNum) {
             const timer = timers[timerNum];
             if (!timer.isRunning) return;
             
             const now = Date.now();
             
+            // Check if current speed event has ended
+            if (timer.speedEndTime && now >= timer.speedEndTime) {
+                // Archive the completed speed event
+                timer.speedEvents.push({
+                    startTime: timer.speedStartTime,
+                    endTime: timer.speedEndTime,
+                    speed: timer.speedMultiplier
+                });
+                
+                // Reset for normal speed
+                timer.currentSpeed = 1.0;
+                timer.speedMultiplier = 1.0;
+                timer.speedStartTime = null;
+                timer.speedEndTime = null;
+                logEvent(timerNum, "Speed returned to normal");
+            }
+            
+            // Only trigger new speed event if not currently in one
             if (!timer.speedStartTime || (timer.speedEndTime && now >= timer.speedEndTime)) {
-                if (Math.random() < 0.20) {
-                    if (timer.speedStartTime && timer.speedEndTime) {
-                        timer.speedEvents.push({
-                            startTime: timer.speedStartTime,
-                            endTime: timer.speedEndTime,
-                            speed: timer.speedMultiplier
-                        });
-                    }
-                    
-                    timer.currentSpeed = Math.random() * 1.4 + 0.6;
+                if (Math.random() < 0.25) { // 25% chance for more noticeable effects
+                    timer.currentSpeed = Math.random() * 2.0 + 0.5; // 0.5x to 2.5x speed
                     timer.speedMultiplier = timer.currentSpeed;
                     timer.speedStartTime = now;
                     
-                    const durationPercent = Math.random() * 0.20 + 0.05;
+                    // Make speed events longer (10-40% of total duration) 
+                    const durationPercent = Math.random() * 0.30 + 0.10;
                     const durationMs = timer.originalDuration * durationPercent * 1000;
                     timer.speedEndTime = now + durationMs;
                     
-                    logEvent(timerNum, `Speed event! ${timer.currentSpeed.toFixed(1)}x for ${(durationMs/1000).toFixed(1)}s (${(durationPercent*100).toFixed(1)}% of total)`);
+                    logEvent(timerNum, `Speed event! ${timer.currentSpeed.toFixed(1)}x for ${(durationMs/1000).toFixed(1)}s`);
                 }
             }
         }
@@ -548,7 +576,14 @@
             logEvent(timerNum, `Timer started: ${formatTime(timer.originalDuration)}`);
 
             timer.timerInterval = setInterval(() => tick(timerNum), 100);
-            timer.speedCheckInterval = setInterval(() => checkSpeedRandomization(timerNum), 5000);
+            
+            // CRITICAL FIX: Add timer-specific random offset to prevent synchronization
+            const randomOffset = (timerNum - 1) * 1000 + Math.random() * 2000; // Timer 1: 0-2s, Timer 2: 1-3s
+            const baseInterval = 3000 + (timerNum * 500); // Timer 1: 3.5s, Timer 2: 4s
+            
+            setTimeout(() => {
+                timer.speedCheckInterval = setInterval(() => checkSpeedRandomization(timerNum), baseInterval);
+            }, randomOffset);
 
             updateDisplay(timerNum);
         }
